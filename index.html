@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Segurança: o app não conversa com nenhum servidor externo -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#3b2314">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cacau">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Cacau — Controle da Fazenda</title>
+<style>
+:root{--bg:#f6f1ea;--card:#fff;--tx:#2a1c12;--mut:#7a6a5d;--pri:#5b3a1e;--pri2:#3b2314;--ac:#2e7d32;--ac2:#e8f5e9;--warn:#b26a00;--err:#c62828;--bd:#e6dcd0;--sh:0 1px 3px rgba(60,35,15,.12)}
+[data-theme=dark]{--bg:#17120e;--card:#231b15;--tx:#f3ebe3;--mut:#b4a596;--pri:#d9a066;--pri2:#2b1d13;--ac:#66bb6a;--ac2:#1f3321;--bd:#3a2e24;--sh:none}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--pri2);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px}
+header h1{margin:0 0 8px;font-size:18px;display:flex;align-items:center;gap:8px}
+header .per{display:flex;gap:8px}
+header select{flex:1;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px;font-size:15px}
+header select option{color:#000}
+main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:900px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:8px 0 6px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:56px}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--pri);font-weight:700}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--sh)}
+.card h2{font-size:16px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;box-shadow:var(--sh)}
+.kpi small{display:block;color:var(--mut);font-size:12px}
+.kpi b{display:block;font-size:20px;margin-top:2px}
+.kpi span{font-size:12px;color:var(--mut)}
+.kpi.dest{background:var(--pri);color:#fff;border-color:var(--pri)}.kpi.dest small,.kpi.dest span{color:rgba(255,255,255,.8)}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input,select,textarea{width:100%;font-size:17px;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);min-height:46px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pri);border-color:transparent}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:12px 16px;font-size:16px;font-weight:600;min-height:48px;background:var(--pri);color:#fff;cursor:pointer}
+.btn.full{width:100%;margin-top:14px}
+.btn.sec{background:transparent;color:var(--pri);border:1.5px solid var(--pri)}
+.btn.red{background:var(--err)}.btn.sm{min-height:38px;padding:8px 12px;font-size:14px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.btns .btn{flex:1}
+.prev{background:var(--ac2);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.prev b{font-size:16px}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+th{font-size:12px;color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--card)}
+th:first-child,td:first-child,.l{text-align:left}
+tr.clk{cursor:pointer}tr.clk:active{background:var(--ac2)}
+tr.venda td{color:var(--warn)}
+tfoot td{font-weight:700;border-top:2px solid var(--bd)}
+.muted{color:var(--mut);font-size:13px}
+.empty{text-align:center;color:var(--mut);padding:24px 8px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bd);color:var(--tx)}
+.tag.g{background:var(--ac2);color:var(--ac)}
+.alerta{background:#fff3e0;color:#7a4a00;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+[data-theme=dark] .alerta{background:#3a2a10;color:#ffcc80}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.modal.hidden,.hidden{display:none!important}
+.sheet{background:var(--bg);width:100%;max-width:700px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0 0 10px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
+.x{border:0;background:var(--bd);color:var(--tx);width:36px;height:36px;border-radius:50%;font-size:20px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));background:#222;color:#fff;padding:10px 16px;border-radius:12px;z-index:30;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+#toast.on{opacity:1}
+#lock{position:fixed;inset:0;z-index:50;background:var(--pri2);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px}
+#lock input{max-width:240px;text-align:center;font-size:28px;letter-spacing:8px;background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.3)}
+.seg{display:flex;background:var(--bd);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:8px;font-size:14px;color:var(--tx)}
+.seg button.on{background:var(--card);font-weight:700;box-shadow:var(--sh)}
+.lst .it{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd);cursor:pointer;gap:10px}
+.lst .it:last-child{border:0}
+.lst .it b{display:block}
+</style>
+</head>
+<body>
+<div id="lock" class="hidden">
+  <svg width="64" height="64" viewBox="0 0 64 64"><ellipse cx="32" cy="32" rx="16" ry="26" fill="#c47a3a"/><path d="M32 6v52M24 10c-3 14-3 30 0 44M40 10c3 14 3 30 0 44" stroke="#8a4b1d" stroke-width="2" fill="none"/></svg>
+  <h2 style="margin:0">Digite seu PIN</h2>
+  <input id="pinIn" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
+  <button class="btn" id="pinOk" style="background:#fff;color:#3b2314;min-width:200px">Entrar</button>
+  <div id="pinErr" style="color:#ffab91;min-height:20px"></div>
+</div>
+
+<header>
+  <h1><svg width="22" height="22" viewBox="0 0 64 64"><ellipse cx="32" cy="32" rx="16" ry="26" fill="#d9a066"/><path d="M32 6v52M24 10c-3 14-3 30 0 44M40 10c3 14 3 30 0 44" stroke="#5b3a1e" stroke-width="3" fill="none"/></svg><span id="nomeFaz">Fazenda</span></h1>
+  <div class="per"><select id="selAno" aria-label="Ano"></select><select id="selMes" aria-label="Mês"></select></div>
+</header>
+
+<main id="app"></main>
+
+<nav id="nav">
+  <button data-tab="inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Início</button>
+  <button data-tab="lancar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Lançar</button>
+  <button data-tab="vendas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Vendas</button>
+  <button data-tab="parceiros"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 8M22 21c0-3-2-5-4-5.5"/></svg>Parceiros</button>
+  <button data-tab="relatorios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</button>
+  <button data-tab="config"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+</nav>
+
+<div id="modal" class="modal hidden"><div class="sheet" id="modalBody"></div></div>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json" class="hidden">
+
+<script>
+'use strict';
+/* =====================================================================
+   CACAU — Controle de produção da fazenda e dos parceiros (meeiros)
+   Tudo fica salvo SOMENTE neste aparelho (localStorage). Nada vai p/ internet.
+   ===================================================================== */
+
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const KEY='cacau-fazenda-v1';
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const hoje=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+
+/* ---------- utilidades de texto e número ---------- */
+// Escapa HTML para impedir injeção de código vindo do que o usuário digita
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+// Aceita "1.234,5" ou "1234.5" ou "129"
+function num(s){if(typeof s==='number')return s;s=String(s??'').trim().replace(/\s/g,'');if(!s)return NaN;if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return Number(s)}
+function f(n,d=2){if(n==null||!isFinite(n))return '—';return n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})}
+const f0=n=>f(n,0);
+const brl=n=>(n==null||!isFinite(n))?'—':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const dataBR=s=>s?s.split('-').reverse().join('/'):'';
+const mesDe=s=>Number(s.slice(5,7))-1;
+const dataOk=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(new Date(s+'T12:00:00'));
+
+/* ---------- dados ---------- */
+function padrao(){return{versao:1,cfg:{nome:'Minha Fazenda',arroba:15,pct:50,estoque:'Fortaleza',dark:false,pin:null,ultBackup:null},safras:{},parceiros:[],entregas:[],vendas:[]}}
+function carregar(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.cfg){const p=padrao();return{...p,...d,cfg:{...p.cfg,...d.cfg}}}}catch(e){}return padrao()}
+function salvar(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('⚠️ Não foi possível salvar. Faça um backup agora!')}}
+let S=carregar();
+const UI={tab:'inicio',ano:String(new Date().getFullYear()),mes:-1,editE:null,editV:null,busca:'',rel:'planilha'};
+
+const parc=id=>S.parceiros.find(p=>p.id===id);
+const nomeP=id=>id==='F'?S.cfg.nome:(parc(id)?.nome||'(removido)');
+const safra=ano=>S.safras[ano]||{ant:0,saldo:0};
+const noPer=r=>UI.mes<0||mesDe(r.data)===UI.mes;
+const nomePer=()=>(UI.mes<0?'Ano '+UI.ano:MESES[UI.mes]+' / '+UI.ano);
+
+/* =====================================================================
+   MOTOR DE CÁLCULO — reproduz as colunas da planilha da fazenda
+   @ = kg ÷ peso da arroba | Fazenda Kg = kg × % fazenda
+   Produção @ (acumulada) | Total Fazenda @ (acumulado)
+   Perc. Safra Passada % = Total Fazenda @ ÷ Safra anterior @ × 100
+   Estoque (Fortaleza) kg = saldo anterior + kg fazenda − kg vendidos
+   ===================================================================== */
+function linhas(ano){
+  const A=S.cfg.arroba,p=S.cfg.pct/100,sf=safra(ano);
+  const ev=[...S.entregas.filter(e=>e.data.startsWith(ano)).map(e=>({t:'E',...e})),
+            ...S.vendas.filter(v=>v.data.startsWith(ano)).map(v=>({t:'V',...v}))]
+    .sort((a,b)=>a.data.localeCompare(b.data)||(a.t===b.t?(a.ts||0)-(b.ts||0):(a.t==='E'?-1:1)));
+  let prodKg=0,fazKg=0,vendKg=0;
+  return ev.map(x=>{
+    const r={...x};
+    if(x.t==='E'){r.arr=x.kg/A;r.fazKg=x.kg*p;r.parKg=x.kg-r.fazKg;r.fazArr=r.fazKg/A;r.parArr=r.parKg/A;prodKg+=x.kg;fazKg+=r.fazKg}
+    else if(x.vend==='F'){vendKg+=x.arrobas*A}
+    r.prodArr=prodKg/A;r.prodKg=prodKg;r.totFazArr=fazKg/A;r.totFazKg=fazKg;
+    r.perc=sf.ant>0?r.totFazArr/sf.ant*100:null;
+    r.estKg=sf.saldo+fazKg-vendKg;r.estArr=r.estKg/A;
+    return r;
+  });
+}
+// Resumo do período selecionado (ano + mês)
+function resumo(){
+  const all=linhas(UI.ano),per=all.filter(noPer),sf=safra(UI.ano);
+  const E=per.filter(r=>r.t==='E'),VF=per.filter(r=>r.t==='V'&&r.vend==='F');
+  const sum=(a,k)=>a.reduce((s,r)=>s+(r[k]||0),0);
+  const ult=all.filter(r=>UI.mes<0||mesDe(r.data)<=UI.mes).pop();
+  const estKg=ult?ult.estKg:sf.saldo;
+  const vArr=sum(VF,'arrobas'),vVal=sum(VF,'valor');
+  return{all,per,E,kg:sum(E,'kg'),fazKg:sum(E,'fazKg'),parKg:sum(E,'parKg'),vArr,vVal,
+    preco:vArr>0?vVal/vArr:null,estKg,estArr:estKg/S.cfg.arroba,perc:ult?ult.perc:null,sf};
+}
+// Totais por parceiro no período
+function porParceiro(per){
+  const m={};
+  for(const p of S.parceiros)m[p.id]={p,kg:0,fazKg:0,parKg:0,n:0,vArr:0,vVal:0};
+  for(const r of per){
+    if(r.t==='E'&&m[r.parceiroId]){const o=m[r.parceiroId];o.kg+=r.kg;o.fazKg+=r.fazKg;o.parKg+=r.parKg;o.n++}
+    if(r.t==='V'&&m[r.vend]){m[r.vend].vArr+=r.arrobas;m[r.vend].vVal+=r.valor}
+  }
+  return Object.values(m);
+}
+
+/* ---------- componentes visuais ---------- */
+const kpi=(t,v,s,c='')=>`<div class="kpi ${c}"><small>${t}</small><b>${v}</b><span>${s||''}</span></div>`;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2600)}
+function abrirModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.remove('hidden')}
+function fecharModal(){$('#modal').classList.add('hidden');$('#modalBody').innerHTML=''}
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')fecharModal()});
+// Confirmação própria (sem alert do navegador)
+function confirmar(msg,ok='Confirmar',perigo=true){return new Promise(res=>{
+  abrirModal(`<h2>Confirmar</h2><p>${esc(msg)}</p><div class="btns"><button class="btn sec" id="cNo">Cancelar</button><button class="btn ${perigo?'red':''}" id="cOk">${esc(ok)}</button></div>`);
+  $('#cNo').onclick=()=>{fecharModal();res(false)};$('#cOk').onclick=()=>{fecharModal();res(true)};})}
+function pedirTexto(tit,msg,tipo='password'){return new Promise(res=>{
+  abrirModal(`<h2>${esc(tit)}</h2><p class="muted">${esc(msg)}</p><input id="pTx" type="${tipo}" autocomplete="off"><div class="btns"><button class="btn sec" id="pNo">Cancelar</button><button class="btn" id="pOk">OK</button></div>`);
+  setTimeout(()=>$('#pTx')?.focus(),50);
+  $('#pNo').onclick=()=>{fecharModal();res(null)};$('#pOk').onclick=()=>{const v=$('#pTx').value;fecharModal();res(v)};})}
+
+/* ---------- cabeçalho ---------- */
+function anos(){const s=new Set([String(new Date().getFullYear()),UI.ano]);for(const r of[...S.entregas,...S.vendas])s.add(r.data.slice(0,4));return[...s].sort().reverse()}
+function cabecalho(){
+  $('#nomeFaz').textContent=S.cfg.nome;
+  $('#selAno').innerHTML=anos().map(a=>`<option ${a===UI.ano?'selected':''}>${a}</option>`).join('');
+  $('#selMes').innerHTML=`<option value="-1">Ano inteiro</option>`+MESES.map((m,i)=>`<option value="${i}" ${i===UI.mes?'selected':''}>${m}</option>`).join('');
+  document.documentElement.dataset.theme=S.cfg.dark?'dark':'light';
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===UI.tab));
+}
+$('#selAno').onchange=e=>{UI.ano=e.target.value;render()};
+$('#selMes').onchange=e=>{UI.mes=Number(e.target.value);render()};
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b){UI.tab=b.dataset.tab;UI.editE=UI.editV=null;render();scrollTo(0,0)}};
+
+/* =====================================================================
+   TELA: INÍCIO
+   ===================================================================== */
+function telaInicio(){
+  const R=resumo(),A=S.cfg.arroba;
+  const dias=S.cfg.ultBackup?Math.floor((Date.now()-S.cfg.ultBackup)/864e5):null;
+  const aviso=(S.entregas.length&&(dias===null||dias>=7))?`<div class="alerta">💾 ${dias===null?'Você ainda não fez backup.':'Último backup há '+dias+' dias.'} Os dados ficam só neste aparelho. <a href="#" data-go="config">Fazer backup</a></div>`:'';
+  const rk=porParceiro(R.per).filter(o=>o.kg>0).sort((a,b)=>b.kg-a.kg);
+  return `${aviso}
+  <div class="muted" style="margin-bottom:8px">${esc(nomePer())}</div>
+  <div class="grid">
+    ${kpi('Produção total',f(R.kg/A)+' @',f(R.kg,1)+' kg','dest')}
+    ${kpi('Parte da fazenda',f(R.fazKg/A)+' @',f(R.fazKg,1)+' kg')}
+    ${kpi('Parte dos parceiros',f(R.parKg/A)+' @',f(R.parKg,1)+' kg')}
+    ${kpi('Estoque '+esc(S.cfg.estoque),f(R.estArr)+' @',f(R.estKg,1)+' kg')}
+    ${kpi('Vendido',f(R.vArr)+' @',brl(R.vVal))}
+    ${kpi('Preço médio',R.preco?brl(R.preco):'—','por arroba')}
+    ${kpi('% da safra anterior',R.perc==null?'—':f(R.perc)+' %',R.sf.ant?('safra ant.: '+f(R.sf.ant)+' @'):'defina em Ajustes')}
+    ${kpi('Entregas',f0(R.E.length),'lançamentos')}
+  </div>
+  <button class="btn full" data-go="lancar">+ Novo lançamento</button>
+  <div class="card" style="margin-top:12px"><h2>Produção por parceiro</h2>
+  ${rk.length?`<div class="tbl"><table><thead><tr><th>Parceiro</th><th>Kg</th><th>@ total</th><th>@ parceiro</th><th>@ fazenda</th></tr></thead><tbody>
+  ${rk.map(o=>`<tr class="clk" data-ext="${o.p.id}"><td>${esc(o.p.nome)}</td><td>${f(o.kg,1)}</td><td>${f(o.kg/A)}</td><td>${f(o.parKg/A)}</td><td>${f(o.fazKg/A)}</td></tr>`).join('')}
+  </tbody></table></div><p class="muted">Toque no nome para ver o extrato.</p>`:'<div class="empty">Nenhuma entrega no período.</div>'}
+  </div>`;
+}
+
+/* =====================================================================
+   TELA: LANÇAR ENTREGA
+   ===================================================================== */
+function telaLancar(){
+  const ativos=S.parceiros.filter(p=>p.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(!S.parceiros.length)return `<div class="card empty"><p>Cadastre primeiro os parceiros (meeiros).</p><button class="btn" data-go="parceiros">Cadastrar parceiro</button></div>`;
+  const e=UI.editE?S.entregas.find(x=>x.id===UI.editE):null;
+  let opts=ativos.slice();if(e&&!ativos.find(p=>p.id===e.parceiroId)&&parc(e.parceiroId))opts.push(parc(e.parceiroId));
+  const quadras=[...new Set([...S.entregas.map(x=>x.quadra),...S.parceiros.map(p=>p.quadra)].filter(Boolean))];
+  const R=resumo(),lista=R.per.filter(r=>r.t==='E').reverse();
+  return `<div class="card"><h2>${e?'Editar lançamento':'Nova entrega de cacau'}</h2>
+    <div class="row"><div><label>Data</label><input type="date" id="eData" value="${esc(e?e.data:hoje())}"></div>
+    <div><label>Quadra</label><input id="eQuadra" list="dlQ" value="${esc(e?e.quadra:'')}" placeholder="ex.: 2"></div></div>
+    <datalist id="dlQ">${quadras.map(q=>`<option value="${esc(q)}">`).join('')}</datalist>
+    <label>Parceiro</label><select id="eParc"><option value="">Selecione…</option>${opts.map(p=>`<option value="${p.id}" ${e&&e.parceiroId===p.id?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>
+    <label>Quantidade (kg)</label><input id="eKg" inputmode="decimal" placeholder="0" value="${e?esc(String(e.kg).replace('.',',')):''}">
+    <div class="prev" id="ePrev"></div>
+    <div class="btns">${e?`<button class="btn red sm" data-act="delE">Excluir</button><button class="btn sec" data-act="cancE">Cancelar</button>`:''}<button class="btn" data-act="salvarE">${e?'Salvar alteração':'Salvar entrega'}</button></div>
+  </div>
+  <div class="card"><h2>Lançamentos — ${esc(nomePer())}</h2>
+  ${lista.length?`<div class="tbl"><table><thead><tr><th>Data</th><th class="l">Parceiro</th><th>Quadra</th><th>Kg</th><th>@</th><th>Faz. @</th></tr></thead><tbody>
+  ${lista.map(r=>`<tr class="clk" data-edE="${r.id}"><td>${dataBR(r.data).slice(0,5)}</td><td class="l">${esc(nomeP(r.parceiroId))}</td><td>${esc(r.quadra)}</td><td>${f(r.kg,1)}</td><td>${f(r.arr)}</td><td>${f(r.fazArr)}</td></tr>`).join('')}
+  </tbody></table></div><p class="muted">Toque numa linha para editar ou excluir.</p>`:'<div class="empty">Nada lançado neste período.</div>'}</div>`;
+}
+function previaE(){
+  const el=$('#ePrev');if(!el)return;const kg=num($('#eKg').value),A=S.cfg.arroba,p=S.cfg.pct/100;
+  if(!(kg>0)){el.innerHTML='<span class="muted" style="grid-column:1/-1">Digite os kg para ver o cálculo.</span>';return}
+  el.innerHTML=`<div>Arrobas<br><b>${f(kg/A)} @</b></div><div>Fazenda (${f(S.cfg.pct,0)}%)<br><b>${f(kg*p,1)} kg · ${f(kg*p/A)} @</b></div><div>Parceiro<br><b>${f(kg*(1-p),1)} kg · ${f(kg*(1-p)/A)} @</b></div><div>Arroba<br><b>${f(A,0)} kg</b></div>`;
+}
+function salvarE(){
+  const data=$('#eData').value,quadra=$('#eQuadra').value.trim().slice(0,30),pid=$('#eParc').value,kg=num($('#eKg').value);
+  if(!dataOk(data))return toast('Data inválida');
+  if(!pid)return toast('Escolha o parceiro');
+  if(!(kg>0)||kg>1e6)return toast('Kg deve ser maior que zero');
+  if(UI.editE){const e=S.entregas.find(x=>x.id===UI.editE);Object.assign(e,{data,quadra,parceiroId:pid,kg});UI.editE=null;toast('Lançamento alterado ✔')}
+  else{S.entregas.push({id:uid(),ts:Date.now(),data,quadra,parceiroId:pid,kg});toast(`Salvo ✔ ${nomeP(pid)}: ${f(kg,1)} kg = ${f(kg/S.cfg.arroba)} @`)}
+  salvar();UI.ano=data.slice(0,4);render();
+  const q=$('#eQuadra');if(q&&!UI.editE){$('#eData').value=data}
+}
+
+/* =====================================================================
+   TELA: VENDAS
+   ===================================================================== */
+function telaVendas(){
+  const v=UI.editV?S.vendas.find(x=>x.id===UI.editV):null;
+  const R=resumo(),lista=R.per.filter(r=>r.t==='V').reverse();
+  const locais=[...new Set(S.vendas.map(x=>x.local).filter(Boolean))];
+  const tot=lista.reduce((s,r)=>s+r.valor,0),totA=lista.reduce((s,r)=>s+r.arrobas,0);
+  return `<div class="grid" style="margin-bottom:12px">${kpi('Estoque '+esc(S.cfg.estoque),f(R.estArr)+' @',f(R.estKg,1)+' kg','dest')}${kpi('Vendido no período',f(totA)+' @',brl(tot))}</div>
+  <div class="card"><h2>${v?'Editar venda':'Registrar venda'}</h2>
+    <div class="row"><div><label>Data</label><input type="date" id="vData" value="${esc(v?v.data:hoje())}"></div>
+    <div><label>Quem vendeu</label><select id="vVend"><option value="F">Fazenda (estoque)</option>${S.parceiros.map(p=>`<option value="${p.id}" ${v&&v.vend===p.id?'selected':''}>${esc(p.nome)}</option>`).join('')}</select></div></div>
+    <label>Local / comprador</label><input id="vLocal" list="dlL" value="${esc(v?v.local:'')}" placeholder="ex.: Cooperativa, Ilhéus">
+    <datalist id="dlL">${locais.map(q=>`<option value="${esc(q)}">`).join('')}</datalist>
+    <div class="row"><div><label>Arrobas vendidas</label><input id="vArr" inputmode="decimal" value="${v?esc(String(v.arrobas).replace('.',',')):''}"></div>
+    <div><label>Preço por @ (R$)</label><input id="vPreco" inputmode="decimal" value="${v?esc(String(v.preco).replace('.',',')):''}"></div></div>
+    <label>Valor total (R$) <span class="muted">— calculado, pode ajustar</span></label><input id="vValor" inputmode="decimal" value="${v?esc(f(v.valor)):''}">
+    <label>Observação</label><input id="vObs" value="${esc(v?v.obs:'')}" maxlength="200">
+    <div class="btns">${v?`<button class="btn red sm" data-act="delV">Excluir</button><button class="btn sec" data-act="cancV">Cancelar</button>`:''}<button class="btn" data-act="salvarV">${v?'Salvar alteração':'Salvar venda'}</button></div>
+  </div>
+  <div class="card"><h2>Vendas — ${esc(nomePer())}</h2>
+  ${lista.length?`<div class="tbl"><table><thead><tr><th>Data</th><th class="l">Local</th><th class="l">Vendedor</th><th>@</th><th>R$/@</th><th>Total</th></tr></thead><tbody>
+  ${lista.map(r=>`<tr class="clk" data-edV="${r.id}"><td>${dataBR(r.data).slice(0,5)}</td><td class="l">${esc(r.local)}</td><td class="l">${esc(nomeP(r.vend))}</td><td>${f(r.arrobas)}</td><td>${f(r.preco)}</td><td>${brl(r.valor)}</td></tr>`).join('')}
+  </tbody><tfoot><tr><td colspan="3">Total</td><td>${f(totA)}</td><td>${totA?f(tot/totA):'—'}</td><td>${brl(tot)}</td></tr></tfoot></table></div>`:'<div class="empty">Nenhuma venda no período.</div>'}</div>`;
+}
+let valorManual=false;
+function autoValor(){if(valorManual)return;const a=num($('#vArr').value),p=num($('#vPreco').value);$('#vValor').value=(a>0&&p>0)?f(a*p):''}
+async function salvarV(){
+  const data=$('#vData').value,vend=$('#vVend').value,local=$('#vLocal').value.trim().slice(0,60),arrobas=num($('#vArr').value),preco=num($('#vPreco').value);
+  let valor=num($('#vValor').value);const obs=$('#vObs').value.trim().slice(0,200);
+  if(!dataOk(data))return toast('Data inválida');
+  if(!local)return toast('Informe o local da venda');
+  if(!(arrobas>0))return toast('Arrobas deve ser maior que zero');
+  if(!(preco>0))return toast('Preço deve ser maior que zero');
+  if(!(valor>0))valor=arrobas*preco;
+  if(vend==='F'&&!UI.editV){const R=resumo();if(arrobas>R.estArr+1e-9&&!(await confirmar(`O estoque é de ${f(R.estArr)} @ e a venda é de ${f(arrobas)} @. Salvar mesmo assim?`,'Salvar',false)))return}
+  if(UI.editV){Object.assign(S.vendas.find(x=>x.id===UI.editV),{data,vend,local,arrobas,preco,valor,obs});UI.editV=null;toast('Venda alterada ✔')}
+  else{S.vendas.push({id:uid(),ts:Date.now(),data,vend,local,arrobas,preco,valor,obs});toast('Venda salva ✔ '+brl(valor))}
+  valorManual=false;salvar();UI.ano=data.slice(0,4);render();
+}
+
+/* =====================================================================
+   TELA: PARCEIROS + EXTRATO
+   ===================================================================== */
+function telaParceiros(){
+  const R=resumo(),A=S.cfg.arroba,pp=porParceiro(R.per).sort((a,b)=>(b.p.ativo!==false)-(a.p.ativo!==false)||a.p.nome.localeCompare(b.p.nome));
+  return `<button class="btn full" style="margin:0 0 12px" data-act="novoP">+ Novo parceiro</button>
+  <div class="card"><h2>Parceiros — ${esc(nomePer())}</h2>
+  ${pp.length?`<div class="lst">${pp.map(o=>`<div class="it" data-ext="${o.p.id}"><div><b>${esc(o.p.nome)} ${o.p.ativo===false?'<span class="tag">inativo</span>':''}</b><span class="muted">${o.p.quadra?'Quadra '+esc(o.p.quadra)+' · ':''}${o.n} entrega(s)</span></div><div style="text-align:right"><b>${f(o.parKg/A)} @</b><span class="muted">${f(o.kg,1)} kg no total</span></div></div>`).join('')}</div>`:'<div class="empty">Nenhum parceiro cadastrado.</div>'}
+  </div>`;
+}
+function formParceiro(id){
+  const p=id?parc(id):null;
+  abrirModal(`<h2>${p?'Editar parceiro':'Novo parceiro'}<button class="x" data-act="fechar">×</button></h2>
+  <label>Nome *</label><input id="pNome" maxlength="50" value="${esc(p?p.nome:'')}">
+  <label>Quadra padrão</label><input id="pQuadra" maxlength="30" value="${esc(p?p.quadra:'')}">
+  <label>Observação</label><input id="pObs" maxlength="200" value="${esc(p?p.obs:'')}">
+  ${p?`<label><input type="checkbox" id="pAtivo" style="width:auto;min-height:0" ${p.ativo!==false?'checked':''}> Ativo (aparece nos novos lançamentos)</label>`:''}
+  <div class="btns">${p?`<button class="btn red sm" data-act="delP" data-id="${p.id}">Excluir</button>`:''}<button class="btn" data-act="salvarP" data-id="${p?p.id:''}">Salvar</button></div>`);
+  setTimeout(()=>$('#pNome')?.focus(),50);
+}
+function salvarP(id){
+  const nome=$('#pNome').value.trim().replace(/\s+/g,' ');
+  if(!nome)return toast('Nome é obrigatório');
+  if(S.parceiros.some(p=>p.id!==id&&p.nome.toLowerCase()===nome.toLowerCase()))return toast('Já existe parceiro com esse nome');
+  const d={nome,quadra:$('#pQuadra').value.trim(),obs:$('#pObs').value.trim()};
+  if(id){Object.assign(parc(id),d,{ativo:$('#pAtivo').checked})}else S.parceiros.push({id:uid(),...d,ativo:true});
+  salvar();fecharModal();toast('Parceiro salvo ✔');render();
+}
+async function delP(id){
+  const usado=S.entregas.some(e=>e.parceiroId===id)||S.vendas.some(v=>v.vend===id);
+  if(usado){toast('Tem lançamentos: foi apenas inativado');parc(id).ativo=false;salvar();fecharModal();render();return}
+  if(await confirmar('Excluir este parceiro?','Excluir')){S.parceiros=S.parceiros.filter(p=>p.id!==id);salvar();render()}
+}
+function extrato(id){
+  const p=parc(id);if(!p)return;const A=S.cfg.arroba,R=resumo();
+  const E=R.per.filter(r=>r.t==='E'&&r.parceiroId===id),V=R.per.filter(r=>r.t==='V'&&r.vend===id);
+  const t=porParceiro(R.per).find(o=>o.p.id===id);
+  const q={};E.forEach(r=>{const k=r.quadra||'—';q[k]=(q[k]||0)+r.kg});
+  const totFaz=R.fazKg,part=totFaz>0?t.fazKg/totFaz*100:0;
+  abrirModal(`<h2>${esc(p.nome)}<button class="x" data-act="fechar">×</button></h2>
+  <div class="muted" style="margin-bottom:8px">${esc(nomePer())}${p.obs?' · '+esc(p.obs):''}</div>
+  <div class="grid">${kpi('Total entregue',f(t.kg/A)+' @',f(t.kg,1)+' kg','dest')}${kpi('Parte do parceiro',f(t.parKg/A)+' @',f(t.parKg,1)+' kg')}${kpi('Parte da fazenda',f(t.fazKg/A)+' @',f(t.fazKg,1)+' kg')}${kpi('Participação',f(part,1)+' %','da parte da fazenda')}</div>
+  ${V.length?`<div class="card" style="margin-top:12px"><h2>Vendas do parceiro</h2>${V.map(r=>`<div class="muted">${dataBR(r.data)} · ${esc(r.local)} · ${f(r.arrobas)} @ · <b>${brl(r.valor)}</b></div>`).join('')}<p><b>Total: ${f(t.vArr)} @ · ${brl(t.vVal)}</b><br><span class="muted">Saldo não vendido: ${f(t.parKg/A-t.vArr)} @</span></p></div>`:''}
+  <div class="card" style="margin-top:12px"><h2>Por quadra</h2>${Object.keys(q).length?Object.entries(q).map(([k,v])=>`<div class="muted">Quadra ${esc(k)}: <b>${f(v,1)} kg · ${f(v/A)} @</b></div>`).join(''):'<span class="muted">—</span>'}</div>
+  <div class="card"><h2>Entregas (${E.length})</h2>${E.length?`<div class="tbl"><table><thead><tr><th>Data</th><th>Quadra</th><th>Kg</th><th>@</th><th>@ parc.</th><th>@ faz.</th></tr></thead><tbody>${E.map(r=>`<tr><td>${dataBR(r.data)}</td><td>${esc(r.quadra)}</td><td>${f(r.kg,1)}</td><td>${f(r.arr)}</td><td>${f(r.parArr)}</td><td>${f(r.fazArr)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2">Total</td><td>${f(t.kg,1)}</td><td>${f(t.kg/A)}</td><td>${f(t.parKg/A)}</td><td>${f(t.fazKg/A)}</td></tr></tfoot></table></div>`:'<div class="empty">Sem entregas no período.</div>'}</div>
+  <div class="btns"><button class="btn sec" data-act="csvP" data-id="${id}">Exportar CSV</button><button class="btn sec" data-act="editP" data-id="${id}">Editar cadastro</button></div>`);
+}
+
+/* =====================================================================
+   TELA: RELATÓRIOS
+   ===================================================================== */
+function telaRelatorios(){
+  const seg=`<div class="seg">${[['planilha','Planilha'],['mensal','Mês a mês'],['parceiros','Parceiros']].map(([k,t])=>`<button data-rel="${k}" class="${UI.rel===k?'on':''}">${t}</button>`).join('')}</div>`;
+  const A=S.cfg.arroba;
+  if(UI.rel==='mensal'){
+    const all=linhas(UI.ano);let tk=0,tf=0,tv=0,tr=0;
+    const rows=MESES.map((m,i)=>{const pm=all.filter(r=>mesDe(r.data)===i),E=pm.filter(r=>r.t==='E'),V=pm.filter(r=>r.t==='V'&&r.vend==='F');
+      const kg=E.reduce((s,r)=>s+r.kg,0),fz=E.reduce((s,r)=>s+r.fazKg,0),va=V.reduce((s,r)=>s+r.arrobas,0),vr=V.reduce((s,r)=>s+r.valor,0);tk+=kg;tf+=fz;tv+=va;tr+=vr;
+      const ult=pm[pm.length-1];return{m,kg,fz,va,vr,est:ult?ult.estArr:null}});
+    return seg+`<div class="card"><h2>Resumo mensal — ${UI.ano}</h2><div class="tbl"><table><thead><tr><th>Mês</th><th>Kg</th><th>@</th><th>Faz. @</th><th>Vend. @</th><th>R$</th><th>Estoque @</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${r.m}</td><td>${f(r.kg,1)}</td><td>${f(r.kg/A)}</td><td>${f(r.fz/A)}</td><td>${f(r.va)}</td><td>${brl(r.vr)}</td><td>${r.est==null?'—':f(r.est)}</td></tr>`).join('')}
+    </tbody><tfoot><tr><td>Total</td><td>${f(tk,1)}</td><td>${f(tk/A)}</td><td>${f(tf/A)}</td><td>${f(tv)}</td><td>${brl(tr)}</td><td></td></tr></tfoot></table></div>
+    <button class="btn sec full" data-act="csvM">Exportar CSV (Excel)</button></div>`;
+  }
+  if(UI.rel==='parceiros'){
+    const R=resumo(),pp=porParceiro(R.per).filter(o=>o.kg>0||o.vArr>0).sort((a,b)=>b.kg-a.kg);
+    return seg+`<div class="card"><h2>Ranking — ${esc(nomePer())}</h2>${pp.length?`<div class="tbl"><table><thead><tr><th>#</th><th class="l">Parceiro</th><th>Kg</th><th>@</th><th>@ parc.</th><th>@ faz.</th><th>Vendeu</th></tr></thead><tbody>
+    ${pp.map((o,i)=>`<tr class="clk" data-ext="${o.p.id}"><td>${i+1}º</td><td class="l">${esc(o.p.nome)}</td><td>${f(o.kg,1)}</td><td>${f(o.kg/A)}</td><td>${f(o.parKg/A)}</td><td>${f(o.fazKg/A)}</td><td>${o.vVal?brl(o.vVal):'—'}</td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="empty">Sem dados no período.</div>'}<button class="btn sec full" data-act="csvR">Exportar CSV (Excel)</button></div>`;
+  }
+  const R=resumo(),b=UI.busca.toLowerCase();
+  const rows=R.per.filter(r=>!b||[r.data,dataBR(r.data),r.quadra,r.local,r.t==='E'?nomeP(r.parceiroId):nomeP(r.vend)].join(' ').toLowerCase().includes(b));
+  return seg+`<div class="card"><h2>Planilha — ${esc(nomePer())}</h2>
+  <input id="busca" placeholder="Buscar parceiro, quadra, data ou local" value="${esc(UI.busca)}" style="margin-bottom:10px">
+  ${rows.length?`<div class="tbl"><table><thead><tr><th>Data</th><th>Quadra</th><th class="l">Parceiro</th><th>Kg</th><th>@</th><th>Faz. Kg</th><th>Produção @</th><th>Fazenda @</th><th>Total Faz. @</th><th>Venda @</th><th>% Safra ant.</th><th>${esc(S.cfg.estoque)} @</th><th>${esc(S.cfg.estoque)} Kg</th></tr></thead><tbody>
+  ${rows.map(r=>r.t==='E'?`<tr class="clk" data-edE="${r.id}"><td>${dataBR(r.data)}</td><td>${esc(r.quadra)}</td><td class="l">${esc(nomeP(r.parceiroId))}</td><td>${f(r.kg,1)}</td><td>${f(r.arr)}</td><td>${f(r.fazKg,1)}</td><td>${f(r.prodArr)}</td><td>${f(r.fazArr)}</td><td>${f(r.totFazArr)}</td><td></td><td>${r.perc==null?'':f(r.perc,4)}</td><td>${f(r.estArr)}</td><td>${f(r.estKg)}</td></tr>`
+   :`<tr class="clk venda" data-edV="${r.id}"><td>${dataBR(r.data)}</td><td></td><td class="l">Venda · ${esc(r.local)}${r.vend!=='F'?' ('+esc(nomeP(r.vend))+')':''}</td><td></td><td></td><td></td><td>${f(r.prodArr)}</td><td></td><td>${f(r.totFazArr)}</td><td>${f(r.arrobas)}</td><td>${r.perc==null?'':f(r.perc,4)}</td><td>${f(r.estArr)}</td><td>${f(r.estKg)}</td></tr>`).join('')}
+  </tbody></table></div>`:'<div class="empty">Sem lançamentos.</div>'}
+  <p class="muted">Acumulados contam desde 1º de janeiro de ${UI.ano}${safra(UI.ano).saldo?' + saldo anterior':''}. Vendas em laranja.</p>
+  <button class="btn sec full" data-act="csvPl">Exportar planilha CSV (Excel)</button></div>`;
+}
+
+/* ---------- exportação CSV (abre no Excel / Google Planilhas) ---------- */
+const n2=(n,d=2)=>(n==null||!isFinite(n))?'':n.toFixed(d).replace('.',',');
+const cel=s=>{s=String(s??'');if(/^[=+\-@]/.test(s))s="'"+s;return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+function csv(nome,cab,linhasCsv){const t='﻿'+[cab,...linhasCsv].map(l=>l.map(cel).join(';')).join('\r\n');baixar(nome,t,'text/csv;charset=utf-8')}
+function csvPlanilha(){const R=resumo();csv(`cacau-planilha-${UI.ano}${UI.mes>=0?'-'+String(UI.mes+1).padStart(2,'0'):''}.csv`,
+  ['Mês','Data','Quadra','Parceiro','Kg','@','Fazenda Kg','Produção @','Fazenda @','Total Fazenda @','Venda @','Local venda','Valor venda','Perc. Safra Passada %',S.cfg.estoque+' @',S.cfg.estoque+' KG'],
+  R.per.map(r=>r.t==='E'?[MESES[mesDe(r.data)],dataBR(r.data),r.quadra,nomeP(r.parceiroId),n2(r.kg,1),n2(r.arr,4),n2(r.fazKg,2),n2(r.prodArr,4),n2(r.fazArr,4),n2(r.totFazArr,4),'','','',r.perc==null?'':n2(r.perc,6),n2(r.estArr),n2(r.estKg)]
+    :[MESES[mesDe(r.data)],dataBR(r.data),'',r.vend==='F'?'Venda fazenda':'Venda '+nomeP(r.vend),'','','',n2(r.prodArr,4),'',n2(r.totFazArr,4),n2(r.arrobas),r.local,n2(r.valor),r.perc==null?'':n2(r.perc,6),n2(r.estArr),n2(r.estKg)]))}
+function csvParc(id){const R=resumo(),A=S.cfg.arroba;csv(`cacau-${nomeP(id).replace(/\W+/g,'_')}-${UI.ano}.csv`,['Data','Quadra','Kg','@','Kg parceiro','@ parceiro','Kg fazenda','@ fazenda'],
+  R.per.filter(r=>r.t==='E'&&r.parceiroId===id).map(r=>[dataBR(r.data),r.quadra,n2(r.kg,1),n2(r.arr,4),n2(r.parKg),n2(r.parArr,4),n2(r.fazKg),n2(r.fazArr,4)]))}
+function csvRanking(){const R=resumo(),A=S.cfg.arroba;csv(`cacau-parceiros-${UI.ano}.csv`,['Parceiro','Entregas','Kg','@','@ parceiro','@ fazenda','@ vendidas pelo parceiro','R$ vendido'],
+  porParceiro(R.per).map(o=>[o.p.nome,o.n,n2(o.kg,1),n2(o.kg/A,4),n2(o.parKg/A,4),n2(o.fazKg/A,4),n2(o.vArr),n2(o.vVal)]))}
+function csvMensal(){const all=linhas(UI.ano),A=S.cfg.arroba;csv(`cacau-mensal-${UI.ano}.csv`,['Mês','Kg','@','Fazenda @','Vendido @','R$ vendido'],
+  MESES.map((m,i)=>{const pm=all.filter(r=>mesDe(r.data)===i),E=pm.filter(r=>r.t==='E'),V=pm.filter(r=>r.t==='V'&&r.vend==='F');return[m,n2(E.reduce((s,r)=>s+r.kg,0),1),n2(E.reduce((s,r)=>s+r.kg,0)/A),n2(E.reduce((s,r)=>s+r.fazKg,0)/A),n2(V.reduce((s,r)=>s+r.arrobas,0)),n2(V.reduce((s,r)=>s+r.valor,0))]}))}
+
+// Baixar arquivo (no iPhone abre a folha "Compartilhar" quando disponível)
+async function baixar(nome,conteudo,tipo){
+  const blob=new Blob([conteudo],{type:tipo});
+  try{const file=new File([blob],nome,{type:tipo});
+    if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:nome});return true}}catch(e){if(e.name==='AbortError')return false}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);return true;
+}
+
+/* =====================================================================
+   TELA: AJUSTES (configurações, segurança e backup)
+   ===================================================================== */
+function telaConfig(){
+  const sf=safra(UI.ano),c=S.cfg;
+  return `<div class="card"><h2>Fazenda</h2>
+    <label>Nome da fazenda</label><input id="cNome" maxlength="40" value="${esc(c.nome)}">
+    <div class="row"><div><label>Peso da arroba (kg)</label><input id="cArroba" inputmode="decimal" value="${esc(f(c.arroba,0))}"></div>
+    <div><label>% da fazenda por entrega</label><input id="cPct" inputmode="decimal" value="${esc(String(c.pct).replace('.',','))}"></div></div>
+    <label>Nome do estoque/armazém</label><input id="cEst" maxlength="30" value="${esc(c.estoque)}">
+    <button class="btn full" data-act="salvarC">Salvar ajustes</button></div>
+  <div class="card"><h2>Safra ${UI.ano}</h2><p class="muted">Use o seletor de ano lá em cima para trocar a safra.</p>
+    <div class="row"><div><label>Safra anterior (@)</label><input id="sAnt" inputmode="decimal" value="${sf.ant?esc(f(sf.ant)):''}" placeholder="0"></div>
+    <div><label>Saldo anterior em estoque (kg)</label><input id="sSaldo" inputmode="decimal" value="${sf.saldo?esc(f(sf.saldo)):''}" placeholder="0"></div></div>
+    <button class="btn full" data-act="salvarS">Salvar safra</button></div>
+  <div class="card"><h2>Segurança</h2>
+    <p class="muted">Os dados ficam <b>somente neste aparelho</b>. O app não envia nada para a internet.</p>
+    ${c.pin?`<span class="tag g">PIN ativo</span><div class="btns"><button class="btn sec" data-act="pinSet">Trocar PIN</button><button class="btn sec" data-act="pinOff">Remover PIN</button></div>`:`<button class="btn sec full" data-act="pinSet">Ativar PIN de acesso</button>`}
+    <label style="margin-top:14px"><input type="checkbox" id="cDark" style="width:auto;min-height:0" ${c.dark?'checked':''}> Modo escuro</label></div>
+  <div class="card"><h2>Backup</h2>
+    <p class="muted">Faça backup toda semana e guarde o arquivo no iCloud Drive, Google Drive ou WhatsApp. Se o app for apagado ou o celular trocar, é só restaurar.${c.ultBackup?'<br>Último backup: '+new Date(c.ultBackup).toLocaleString('pt-BR'):''}</p>
+    <button class="btn full" data-act="bkp">Fazer backup (com senha)</button>
+    <button class="btn sec full" data-act="bkpSem">Backup sem senha</button>
+    <button class="btn sec full" data-act="restaurar">Restaurar backup</button></div>
+  <div class="card"><h2>Zona de perigo</h2><button class="btn red full" data-act="apagar">Apagar todos os dados</button></div>
+  <p class="muted" style="text-align:center">Cacau v1.0 · ${S.entregas.length} entregas · ${S.vendas.length} vendas · ${S.parceiros.length} parceiros</p>`;
+}
+function salvarC(){
+  const arroba=num($('#cArroba').value),pct=num($('#cPct').value),nome=$('#cNome').value.trim()||'Minha Fazenda',estoque=$('#cEst').value.trim()||'Estoque';
+  if(!(arroba>0&&arroba<=100))return toast('Arroba inválida');
+  if(!(pct>=0&&pct<=100))return toast('% deve ser entre 0 e 100');
+  Object.assign(S.cfg,{arroba,pct,nome,estoque});salvar();toast('Ajustes salvos ✔ (cálculos atualizados)');render();
+}
+function salvarS(){
+  const ant=num($('#sAnt').value)||0,saldo=num($('#sSaldo').value)||0;
+  if(ant<0||saldo<0)return toast('Valores não podem ser negativos');
+  S.safras[UI.ano]={ant,saldo};salvar();toast('Safra salva ✔');render();
+}
+
+/* ---------- criptografia (Web Crypto: PBKDF2 + AES-GCM) ---------- */
+const enc=new TextEncoder(),dec=new TextDecoder();
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function chave(senha,salt){const k=await crypto.subtle.importKey('raw',enc.encode(senha),'PBKDF2',false,['deriveKey','deriveBits']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function hashPin(pin,salt){const k=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveBits']);
+  return b64(await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},k,256))}
+
+async function pinSet(){
+  if(!crypto.subtle)return toast('Abra o app pelo link https para usar o PIN');
+  const p1=await pedirTexto('Novo PIN','Digite de 4 a 6 números.');if(p1==null)return;
+  if(!/^\d{4,6}$/.test(p1))return toast('O PIN deve ter 4 a 6 números');
+  const p2=await pedirTexto('Confirme o PIN','Digite o PIN novamente.');if(p2!==p1)return toast('Os PINs não conferem');
+  const salt=crypto.getRandomValues(new Uint8Array(16));S.cfg.pin={salt:b64(salt),hash:await hashPin(p1,salt)};salvar();toast('PIN ativado ✔');render();
+}
+async function pinOff(){if(await confirmar('Remover o PIN de acesso?','Remover')){S.cfg.pin=null;salvar();render()}}
+async function backup(comSenha){
+  const dados=JSON.stringify(S);let saida;
+  if(comSenha){
+    if(!crypto.subtle)return toast('Criptografia indisponível aqui; use backup sem senha');
+    const s=await pedirTexto('Senha do backup','Crie uma senha. Sem ela o arquivo não pode ser aberto — anote em lugar seguro.');if(!s)return;
+    if(s.length<4)return toast('Senha muito curta');
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await chave(s,salt),enc.encode(dados));
+    saida=JSON.stringify({app:'cacau',cripto:true,salt:b64(salt),iv:b64(iv),dados:b64(ct)});
+  }else saida=JSON.stringify({app:'cacau',cripto:false,dados:S});
+  const ok=await baixar(`backup-cacau-${hoje()}.json`,saida,'application/json');
+  if(ok){S.cfg.ultBackup=Date.now();salvar();toast('Backup gerado ✔');render()}
+}
+async function restaurar(arq){
+  try{
+    const j=JSON.parse(await arq.text());if(j.app!=='cacau')throw new Error('Arquivo não é backup deste app');
+    let d=j.dados;
+    if(j.cripto){const s=await pedirTexto('Senha do backup','Digite a senha usada ao criar o backup.');if(!s)return;
+      try{d=JSON.parse(dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(j.iv)},await chave(s,unb64(j.salt)),unb64(j.dados))))}catch(e){return toast('Senha incorreta')}}
+    if(!d||!d.cfg||!Array.isArray(d.entregas)||!Array.isArray(d.parceiros)||!Array.isArray(d.vendas))throw new Error('Backup inválido');
+    // Valida cada registro para não importar lixo
+    d.entregas=d.entregas.filter(e=>e&&dataOk(e.data)&&isFinite(e.kg)&&e.kg>0);
+    d.vendas=d.vendas.filter(v=>v&&dataOk(v.data)&&isFinite(v.arrobas)&&isFinite(v.valor));
+    d.parceiros=d.parceiros.filter(p=>p&&p.id&&p.nome);
+    if(!(await confirmar(`Restaurar backup com ${d.entregas.length} entregas, ${d.vendas.length} vendas e ${d.parceiros.length} parceiros? Os dados atuais deste aparelho serão substituídos.`,'Restaurar')))return;
+    const p=padrao();S={...p,...d,cfg:{...p.cfg,...d.cfg}};salvar();toast('Backup restaurado ✔');render();
+  }catch(e){toast('Erro: '+e.message)}
+}
+$('#fileIn').onchange=e=>{const a=e.target.files[0];e.target.value='';if(a)restaurar(a)};
+
+/* ---------- tela de bloqueio por PIN ---------- */
+async function desbloquear(){
+  const pin=$('#pinIn').value;
+  try{if(await hashPin(pin,unb64(S.cfg.pin.salt))===S.cfg.pin.hash){$('#lock').classList.add('hidden');$('#pinIn').value='';$('#pinErr').textContent='';return}}catch(e){}
+  $('#pinErr').textContent='PIN incorreto';$('#pinIn').value='';
+}
+$('#pinOk').onclick=desbloquear;$('#pinIn').onkeydown=e=>{if(e.key==='Enter')desbloquear()};
+function bloquear(){if(S.cfg.pin){$('#lock').classList.remove('hidden');setTimeout(()=>$('#pinIn').focus(),100)}}
+// Bloqueia de novo quando o app volta do segundo plano depois de 5 minutos
+let saiuEm=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)saiuEm=Date.now();else if(saiuEm&&Date.now()-saiuEm>3e5)bloquear()});
+
+/* =====================================================================
+   RENDERIZAÇÃO E EVENTOS
+   ===================================================================== */
+const TELAS={inicio:telaInicio,lancar:telaLancar,vendas:telaVendas,parceiros:telaParceiros,relatorios:telaRelatorios,config:telaConfig};
+function render(){
+  cabecalho();$('#app').innerHTML=TELAS[UI.tab]();
+  if(UI.tab==='lancar'&&$('#eKg')){previaE();$('#eKg').oninput=previaE;
+    $('#eParc').onchange=e=>{const p=parc(e.target.value);if(p&&p.quadra&&!$('#eQuadra').value)$('#eQuadra').value=p.quadra}}
+  if(UI.tab==='vendas'){valorManual=!!UI.editV;$('#vArr').oninput=autoValor;$('#vPreco').oninput=autoValor;$('#vValor').oninput=()=>valorManual=!!$('#vValor').value}
+  if(UI.tab==='config')$('#cDark').onchange=e=>{S.cfg.dark=e.target.checked;salvar();cabecalho()};
+  if($('#busca'))$('#busca').oninput=e=>{UI.busca=e.target.value;const pos=e.target.selectionStart;render();const b=$('#busca');b.focus();b.setSelectionRange(pos,pos)};
+}
+const ACOES={
+  salvarE,salvarV,salvarC,salvarS,pinSet,pinOff,
+  cancE:()=>{UI.editE=null;render()},cancV:()=>{UI.editV=null;render()},
+  delE:async()=>{if(await confirmar('Excluir este lançamento?','Excluir')){S.entregas=S.entregas.filter(x=>x.id!==UI.editE);UI.editE=null;salvar();render();toast('Excluído')}},
+  delV:async()=>{if(await confirmar('Excluir esta venda?','Excluir')){S.vendas=S.vendas.filter(x=>x.id!==UI.editV);UI.editV=null;salvar();render();toast('Excluída')}},
+  novoP:()=>formParceiro(),editP:b=>formParceiro(b.dataset.id),salvarP:b=>salvarP(b.dataset.id||null),delP:b=>delP(b.dataset.id),
+  fechar:fecharModal,csvP:b=>csvParc(b.dataset.id),csvPl:csvPlanilha,csvM:csvMensal,csvR:csvRanking,
+  bkp:()=>backup(true),bkpSem:()=>backup(false),restaurar:()=>$('#fileIn').click(),
+  apagar:async()=>{if(await confirmar('Apagar TODOS os dados deste aparelho? Faça backup antes. Não tem como desfazer.','Apagar tudo')){const d=padrao();d.cfg.dark=S.cfg.dark;S=d;salvar();render();toast('Dados apagados')}}
+};
+document.addEventListener('click',e=>{
+  const t=e.target;
+  const act=t.closest('[data-act]');if(act){e.preventDefault();ACOES[act.dataset.act]?.(act);return}
+  const go=t.closest('[data-go]');if(go){e.preventDefault();UI.tab=go.dataset.go;render();scrollTo(0,0);return}
+  const ex=t.closest('[data-ext]');if(ex){extrato(ex.dataset.ext);return}
+  const rel=t.closest('[data-rel]');if(rel){UI.rel=rel.dataset.rel;render();return}
+  const tr=t.closest('tr');
+  if(tr&&tr.dataset.ede){UI.editE=tr.dataset.ede;UI.tab='lancar';render();scrollTo(0,0);return}
+  if(tr&&tr.dataset.edv){UI.editV=tr.dataset.edv;UI.tab='vendas';render();scrollTo(0,0);return}
+});
+
+/* ---------- inicialização ---------- */
+render();bloquear();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
