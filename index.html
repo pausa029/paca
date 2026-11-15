@@ -429,6 +429,8 @@ function csvMensal(){const all=linhas(UI.ano),A=S.cfg.arroba;csv(`cacau-mensal-$
 
 // Baixar arquivo (no iPhone abre a folha "Compartilhar" quando disponível)
 async function baixar(nome,conteudo,tipo){
+  // Dentro do app Android: salva direto na pasta Downloads/Cacau do aparelho
+  if(window.Android&&Android.salvar){const r=Android.salvar(nome,String(conteudo),tipo);toast(r==='ok'?'Salvo em Downloads/Cacau ✔ '+nome:'Erro ao salvar: '+r);return r==='ok'}
   const blob=new Blob([conteudo],{type:tipo});
   try{const file=new File([blob],nome,{type:tipo});
     if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:nome});return true}}catch(e){if(e.name==='AbortError')return false}
@@ -460,8 +462,9 @@ function telaConfig(){
     <button class="btn full" data-act="bkp">Fazer backup (com senha)</button>
     <button class="btn sec full" data-act="bkpSem">Backup sem senha</button>
     <button class="btn sec full" data-act="restaurar">Restaurar backup</button></div>
+  ${window.Android?'':`<div class="card"><h2>App para Android</h2><p class="muted">Tablet ou celular Android: baixe o app e instale. Funciona sem internet.</p><a class="btn full" href="Cacau.apk" download>Baixar app (APK)</a></div>`}
   <div class="card"><h2>Zona de perigo</h2><button class="btn red full" data-act="apagar">Apagar todos os dados</button></div>
-  <p class="muted" style="text-align:center">Cacau v1.0 · ${S.entregas.length} entregas · ${S.vendas.length} vendas · ${S.parceiros.length} parceiros</p>`;
+  <p class="muted" style="text-align:center">Cacau v1.1 · ${S.entregas.length} entregas · ${S.vendas.length} vendas · ${S.parceiros.length} parceiros</p>`;
 }
 function salvarC(){
   const arroba=num($('#cArroba').value),pct=num($('#cPct').value),nome=$('#cNome').value.trim()||'Minha Fazenda',estoque=$('#cEst').value.trim()||'Estoque';
@@ -503,7 +506,7 @@ async function backup(comSenha){
     saida=JSON.stringify({app:'cacau',cripto:true,salt:b64(salt),iv:b64(iv),dados:b64(ct)});
   }else saida=JSON.stringify({app:'cacau',cripto:false,dados:S});
   const ok=await baixar(`backup-cacau-${hoje()}.json`,saida,'application/json');
-  if(ok){S.cfg.ultBackup=Date.now();salvar();toast('Backup gerado ✔');render()}
+  if(ok){S.cfg.ultBackup=Date.now();salvar();if(!window.Android)toast('Backup gerado ✔');render()}
 }
 async function restaurar(arq){
   try{
@@ -569,7 +572,7 @@ document.addEventListener('click',e=>{
 /* ---------- inicialização ---------- */
 render();bloquear();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
-if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(!window.Android&&'serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

@@ -1,0 +1,193 @@
+name: APK do Cacau
+# Gera o app Android do Cacau com o site TODO dentro do APK (funciona 100% offline)
+# e salva como Cacau.apk na raiz do repositório.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['index.html', 'manifest.json', 'icon-512.png', '.github/workflows/apk.yml']
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Montar o projeto Android
+        run: |
+          A=a/app/src/main
+          mkdir -p $A/assets $A/java/br/cacau/app $A/res/mipmap-xxxhdpi $A/res/xml
+          cp index.html manifest.json icon-180.png icon-192.png icon-512.png $A/assets/
+          cp icon-512.png $A/res/mipmap-xxxhdpi/ic_launcher.png
+          cat > a/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = 'Cacau'
+          include ':app'
+          EOF
+          echo "plugins { id 'com.android.application' version '8.5.2' apply false }" > a/build.gradle
+          echo "android.useAndroidX=true" > a/gradle.properties
+          cat > a/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'br.cacau.app'
+            compileSdk 34
+            defaultConfig { applicationId 'br.cacau.app'; minSdk 23; targetSdk 34; versionCode 2; versionName '1.1' }
+            lint { abortOnError false }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+          }
+          dependencies { implementation 'androidx.webkit:webkit:1.11.0' }
+          EOF
+          cat > $A/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application android:label="Cacau" android:icon="@mipmap/ic_launcher" android:allowBackup="false"
+                android:theme="@android:style/Theme.Material.Light.NoActionBar">
+              <activity android:name=".MainActivity" android:exported="true"
+                  android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+                  android:windowSoftInputMode="adjustResize">
+                <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+          cat > $A/java/br/cacau/app/MainActivity.java <<'EOF'
+          package br.cacau.app;
+
+          import android.app.Activity;
+          import android.content.ContentResolver;
+          import android.content.ContentValues;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.provider.MediaStore;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.webkit.WebViewAssetLoader;
+          import java.io.File;
+          import java.io.FileOutputStream;
+          import java.io.OutputStream;
+          import java.nio.charset.StandardCharsets;
+
+          public class MainActivity extends Activity {
+            private WebView web;
+            private ValueCallback<Uri[]> escolha;
+            private static final String HOST = "appassets.androidplatform.net";
+
+            @Override
+            protected void onCreate(Bundle estado) {
+              super.onCreate(estado);
+              getWindow().setStatusBarColor(0xFF3B2314);
+              final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
+                  .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
+              web = new WebView(this);
+              setContentView(web);
+              WebSettings s = web.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setDatabaseEnabled(true);
+              s.setAllowFileAccess(false);
+              s.setAllowContentAccess(false);
+              web.setWebViewClient(new WebViewClient() {
+                @Override
+                public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
+                  return loader.shouldInterceptRequest(r.getUrl());
+                }
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                  return !HOST.equals(r.getUrl().getHost());
+                }
+              });
+              web.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
+                  if (escolha != null) escolha.onReceiveValue(null);
+                  escolha = cb;
+                  Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                  i.addCategory(Intent.CATEGORY_OPENABLE);
+                  i.setType("*/*");
+                  try { startActivityForResult(Intent.createChooser(i, "Escolha o backup"), 7); }
+                  catch (Exception e) { escolha = null; return false; }
+                  return true;
+                }
+              });
+              web.addJavascriptInterface(new Ponte(), "Android");
+              if (estado != null) web.restoreState(estado);
+              else web.loadUrl("https://" + HOST + "/assets/index.html");
+            }
+
+            @Override
+            protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
+
+            @Override
+            protected void onActivityResult(int req, int res, Intent d) {
+              super.onActivityResult(req, res, d);
+              if (req == 7 && escolha != null) {
+                Uri[] r = (res == RESULT_OK && d != null && d.getData() != null) ? new Uri[]{ d.getData() } : null;
+                escolha.onReceiveValue(r);
+                escolha = null;
+              }
+            }
+
+            @Override
+            public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+
+            // Ponte usada pelo site para salvar backup e CSV na pasta Downloads/Cacau
+            class Ponte {
+              @JavascriptInterface
+              public String salvar(String nome, String conteudo, String tipo) {
+                try {
+                  String limpo = nome.replaceAll("[^A-Za-z0-9._-]", "_");
+                  byte[] dados = conteudo.getBytes(StandardCharsets.UTF_8);
+                  String mime = (tipo == null || tipo.isEmpty()) ? "application/octet-stream" : tipo.split(";")[0];
+                  if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.MediaColumns.DISPLAY_NAME, limpo);
+                    cv.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                    cv.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Cacau");
+                    ContentResolver cr = getContentResolver();
+                    Uri u = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (u == null) return "sem acesso";
+                    OutputStream os = cr.openOutputStream(u);
+                    os.write(dados);
+                    os.close();
+                  } else {
+                    File pasta = new File(getExternalFilesDir(null), "Cacau");
+                    pasta.mkdirs();
+                    FileOutputStream fo = new FileOutputStream(new File(pasta, limpo));
+                    fo.write(dados);
+                    fo.close();
+                  }
+                  return "ok";
+                } catch (Exception e) {
+                  return String.valueOf(e.getMessage());
+                }
+              }
+            }
+          }
+          EOF
+      - name: Compilar
+        run: cd a && gradle :app:assembleDebug --no-daemon
+      - name: Guardar Cacau.apk no repositorio
+        run: |
+          cp a/app/build/outputs/apk/debug/app-debug.apk Cacau.apk
+          rm -rf a
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add Cacau.apk
+          git commit -m "Atualiza Cacau.apk" || echo "sem mudancas"
+          git push
